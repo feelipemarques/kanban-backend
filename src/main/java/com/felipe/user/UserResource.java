@@ -1,5 +1,6 @@
 package com.felipe.user;
 
+import io.smallrye.jwt.build.Jwt;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.GET;
@@ -7,6 +8,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 import org.mindrot.jbcrypt.BCrypt;
+
+import java.util.Map;
 
 @Path("/auth")
 public class UserResource {
@@ -50,9 +53,12 @@ public class UserResource {
                     .entity(response)
                     .build();
         }else{
-            return Response
-                    .ok("Olá, " + user.email + "! Seja bem vindo!")
-                    .build();
+            String token = Jwt
+                    .issuer("kanban")
+                    .upn(user.email)
+                    .sign();
+            Map<String, String> response = Map.of("token", token);
+            return Response.ok(response).build();
         }
     }
 

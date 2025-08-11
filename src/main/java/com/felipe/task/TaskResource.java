@@ -2,6 +2,8 @@ package com.felipe.task;
 
 import com.felipe.enums.StatusEnum;
 import com.felipe.user.UserEntity;
+import io.quarkus.panache.common.Parameters;
+import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -11,16 +13,20 @@ import jakarta.ws.rs.core.SecurityContext;
 
 @Path("/task")
 public class TaskResource {
+    @Inject
+    SecurityContext securityContext;
 
     @POST
     @Transactional
     public Response createTask(@Valid TaskDTO taskDTO){
         TaskEntity task = new TaskEntity();
         task.taskName = taskDTO.taskName;
+
+
         if(taskDTO.status != null){
             task.status = taskDTO.status;
         }
-        task.userOwner = UserEntity.findById(taskDTO.userEmail);
+        task.userOwner = UserEntity.findById(securityContext.getUserPrincipal().getName());
         task.persist();
         TaskDTO response = TaskDTO.toDTO(task);
         return Response.ok(response).build();
@@ -38,10 +44,11 @@ public class TaskResource {
 
     @GET
     @Path("{status}")
+    @Authenticated
     public Response getTasksByStatus(@PathParam("status") String status){
         try{
         StatusEnum statusEnum = StatusEnum.fromString(status);
-        return Response.ok(TaskEntity.find("status", statusEnum)
+        return Response.ok(TaskEntity.find("status = :status and userOwner.email = :email", Parameters.with("status", statusEnum).and("email", securityContext.getUserPrincipal().getName()))
                 .stream()
                 .map(e -> TaskDTO.toDTO((TaskEntity) e))
                 .toList()).build();
